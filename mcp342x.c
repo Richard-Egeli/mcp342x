@@ -73,7 +73,7 @@ mcp342x_err_t mcp342x_read_channel(mcp342x_dev_t* dev,
         return MCP342X_ERR_CONFIG;
     }
 
-    float time = 0.0;
+    uint32_t time = 0;
     while (1) {
         if (dev->timeout_ms != 0.0 && time > dev->timeout_ms) {
             return MCP342X_ERR_TIMEOUT;
@@ -95,7 +95,7 @@ mcp342x_err_t mcp342x_read_channel(mcp342x_dev_t* dev,
         }
 
         dev->delay(10);
-        time += 10.0;
+        time += 10;
     }
 
     if (mcp342x_convert_raw(dev->resolution, reading, &results->raw) !=
