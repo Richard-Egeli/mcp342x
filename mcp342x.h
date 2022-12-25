@@ -1,5 +1,5 @@
-#ifndef MCP342X_INTOTO_H_
-#define MCP342X_INTOTO_H_
+#ifndef MCP342X_H_
+#define MCP342X_H_
 
 #include <stdio.h>
 
@@ -65,4 +65,4 @@ typedef struct mcp342x_dev_struct {
 mcp342x_err_t mcp342x_read_channel(mcp342x_dev_t* dev,
                                    mcp342x_result_t* result);
 
-#endif /* MCP342X_INTOTO_H_ */
+#endif /* MCP342X_H_ */
