@@ -58,8 +58,8 @@ typedef struct mcp342x_dev_struct {
     mcp342x_gain_t gain;
     mcp342x_channel_t channel;
     mcp342x_resolution_t resolution;
+    uint32_t timeout_ms;
     float scale_factor;
-    float timeout_ms;
 } mcp342x_dev_t;
 
 mcp342x_err_t mcp342x_read_channel(mcp342x_dev_t* dev,
