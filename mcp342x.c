@@ -1,27 +1,10 @@
 #include "mcp342x.h"
 
-static float conversion_factors[] = {
-    0.001,          // 12-bit, 1X Gain
-    0.0005,         // 12-bit, 2X Gain
-    0.00025,        // 12-bit, 4X Gain
-    0.000125,       // 12-bit, 8X Gain
-    0.00025,        // 14-bit, 1X Gain
-    0.000125,       // 14-bit, 2X Gain
-    0.0000625,      // 14-bit, 4X Gain
-    0.00003125,     // 14-bit, 8X Gain
-    0.0000625,      // 16-bit, 1X Gain
-    0.00003125,     // 16-bit, 2X Gain
-    0.000015625,    // 16-bit, 4X Gain
-    0.0000078125,   // 16-bit, 8X Gain
-    0.000015625,    // 18-bit, 1X Gain
-    0.0000078125,   // 18-bit, 2X Gain
-    0.00000390625,  // 18-bit, 4X Gain
-    0.000001953125  // 18-bit, 8X Gain
-};
+#include <math.h>
 
 static float mcp342x_convert_raw_to_voltage(mcp342x_resolution_t res,
                                             mcp342x_gain_t gain, uint32_t raw) {
-    return (float)raw * conversion_factors[(res * 4) + gain];
+    return raw * (0.001 / pow(4, res) / pow(2, gain));
 }
 
 static mcp342x_err_t mcp342x_convert_raw(mcp342x_resolution_t res,
