@@ -16,7 +16,7 @@ typedef enum mcp342x_channel_enum {
 
 typedef enum mcp342x_mode_enum {
     MCP342X_MODE_ONE_SHOT   = 0x00,
-    MCP342X_MODE_CONTINUOUS = 0x10,
+    MCP342X_MODE_CONTINUOUS = 0x01,
 } mcp342x_mode_t;
 
 typedef enum mcp342x_gain_enum {
