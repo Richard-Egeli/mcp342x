@@ -1,6 +1,12 @@
 #include "mcp342x.h"
 
-#include <math.h>
+static int pow(int base, int exp) {
+    int result = 1;
+    for (int i = 0; i < exp; i++) {
+        result *= base;
+    }
+    return result;
+}
 
 static float mcp342x_convert_raw_to_voltage(mcp342x_resolution_t res,
                                             mcp342x_gain_t gain, uint32_t raw) {
