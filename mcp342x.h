@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+#define MCP342X_INVALID_VALUE (-131072)  // error value
+
 typedef uint8_t (*mcp342x_com_fptr_t)(uint8_t addr, uint8_t* data, uint8_t len);
 
 typedef uint8_t (*mcp342x_delay_fptr_t)(uint32_t ms);
@@ -35,15 +37,16 @@ typedef enum mcp342x_resolution_enum {
 
 typedef enum mcp342x_err_enum {
     MCP342X_OK,
-    MCP342X_ERR,
+    MCP342X_ERR_READ,
     MCP342X_ERR_CONVERT,
     MCP342X_ERR_TIMEOUT,
     MCP342X_ERR_CONFIG,
 } mcp342x_err_t;
 
 typedef struct mcp342x_result_struct {
-    uint32_t raw;
-    float voltage;
+    int32_t raw;
+    double value;
+    uint8_t config;
 } mcp342x_result_t;
 
 typedef struct mcp342x_dev_struct {
@@ -58,11 +61,13 @@ typedef struct mcp342x_dev_struct {
     mcp342x_gain_t gain;
     mcp342x_channel_t channel;
     mcp342x_resolution_t resolution;
+
+    /* EXTRAS */
     uint32_t timeout_ms;
     float scale_factor;
 } mcp342x_dev_t;
 
 mcp342x_err_t mcp342x_read_channel(mcp342x_dev_t* dev,
-                                   mcp342x_result_t* result);
+                                   mcp342x_result_t* results);
 
 #endif /* MCP342X_H_ */
