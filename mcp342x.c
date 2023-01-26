@@ -1,39 +1,32 @@
 #include "mcp342x.h"
 
-static int pow(int base, int exp) {
-    int result = 1;
-    for (int i = 0; i < exp; i++) {
-        result *= base;
-    }
-    return result;
+static double mcp342x_convert_range(mcp342x_resolution_t res,
+                                    mcp342x_gain_t gain,
+                                    double raw) {
+    return raw / (2048 * (1 << ((int)res * 2))) / (1 << (int)gain);
 }
 
-static float mcp342x_convert_raw_to_voltage(mcp342x_resolution_t res,
-                                            mcp342x_gain_t gain, uint32_t raw) {
-    return raw * (0.001 / pow(4, res) / pow(2, gain));
-}
-
-static mcp342x_err_t mcp342x_convert_raw(mcp342x_resolution_t res,
-                                         uint8_t* readings, uint32_t* raw) {
+static int32_t mcp342x_convert_raw(mcp342x_resolution_t res, uint8_t* vals) {
     switch (res) {
         case MCP342X_RESOLUTION_12_BIT:
-            *raw = ((readings[0] & 0x0f) << 8) | readings[1];
-            break;
+            return ((vals[0] & 1 << 3) != 0)
+                       ? ~(((vals[0] & 0x07) << 8) | vals[1])
+                       : ((vals[0] & 0x07) << 8) | vals[1];
         case MCP342X_RESOLUTION_14_BIT:
-            *raw = ((readings[0] & 0x3f) << 8) | readings[1];
-            break;
+            return ((vals[0] & 1 << 5) != 0)
+                       ? ~(((vals[0] & 0x1f) << 8) | vals[1])
+                       : ((vals[0] & 0x1f) << 8) | vals[1];
         case MCP342X_RESOLUTION_16_BIT:
-            *raw = (readings[0] << 8) | readings[1];
-            break;
+            return ((vals[0] & 1 << 7) != 0)
+                       ? ~(((vals[0] & 0x7f) << 8) | vals[1])
+                       : ((vals[0] & 0x7f) << 8) | vals[1];
         case MCP342X_RESOLUTION_18_BIT:
-            *raw =
-                ((readings[0] & 0x03) << 16) | (readings[1] << 8) | readings[2];
-            break;
+            return ((vals[0] & 1 << 1) != 0)
+                       ? ~(((vals[0] & 0x01) << 16) | (vals[1] << 8) | vals[2])
+                       : ((vals[0] & 0x01) << 16) | (vals[1] << 8) | vals[2];
         default:
-            return MCP342X_ERR;
+            return 0;
     }
-
-    return MCP342X_OK;
 }
 
 static mcp342x_err_t mcp342x_write_config(mcp342x_dev_t* dev) {
@@ -55,47 +48,48 @@ static mcp342x_err_t mcp342x_write_config(mcp342x_dev_t* dev) {
     return MCP342X_OK;
 }
 
-mcp342x_err_t mcp342x_read_channel(mcp342x_dev_t* dev,
-                                   mcp342x_result_t* results) {
+mcp342x_err_t mcp342x_read_channel(mcp342x_dev_t* dev, mcp342x_result_t* res) {
     uint8_t reading[4] = {0};
-    if (mcp342x_write_config(dev) != MCP342X_OK) {
-        return MCP342X_ERR_CONFIG;
-    }
+    uint32_t time      = 0;
 
-    uint32_t time = 0;
-    while (1) {
-        if (dev->timeout_ms != 0.0 && time > dev->timeout_ms) {
-            return MCP342X_ERR_TIMEOUT;
+    while (1) {  // Retries when reading invalid value
+        if (mcp342x_write_config(dev) != MCP342X_OK) {
+            return MCP342X_ERR_CONFIG;
         }
 
-        if (dev->read(dev->addr, reading, 4) != MCP342X_OK) {
-            return MCP342X_ERR;
-        }
+        dev->read(dev->addr, reading, 4);
+        while (1) {  // Waits for conversion to finish
+            if (dev->timeout_ms != 0.0 && time > dev->timeout_ms) {
+                return MCP342X_ERR_TIMEOUT;
+            }
 
-        if (dev->resolution == MCP342X_RESOLUTION_18_BIT) {
-            if ((reading[3] >> 7) == 0) {
+            if (dev->read(dev->addr, reading, 4) != MCP342X_OK) {
+                return MCP342X_ERR_READ;
+            }
+
+            res->config = dev->resolution == MCP342X_RESOLUTION_18_BIT
+                              ? reading[3]
+                              : reading[2];
+
+            if (res->config >> 7 == 0) {
                 break;
             }
+
+            dev->delay(10);
+            time += 10;
+        }
+
+        res->raw = mcp342x_convert_raw(dev->resolution, reading);
+        res->value =
+            mcp342x_convert_range(dev->resolution, dev->gain, res->raw);
+        res->value *= dev->scale_factor != 0 ? dev->scale_factor : 1;
+
+        if (res->raw != MCP342X_INVALID_VALUE) {
             break;
-        } else {
-            if ((reading[2] >> 7) == 0) {
-                break;
-            }
         }
 
-        dev->delay(10);
-        time += 10;
-    }
-
-    if (mcp342x_convert_raw(dev->resolution, reading, &results->raw) !=
-        MCP342X_OK) {
-        return MCP342X_ERR_CONVERT;
-    }
-
-    results->voltage = mcp342x_convert_raw_to_voltage(dev->resolution,
-                                                      dev->gain, results->raw);
-    if (dev->scale_factor != 0.0) {
-        results->voltage *= dev->scale_factor;
+        dev->delay(50);
+        time += 50;
     }
 
     return MCP342X_OK;
